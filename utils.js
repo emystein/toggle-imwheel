@@ -18,7 +18,7 @@ function setServiceMode(value) {
     const [success, tag] = confFile.replace_contents(text, null, false,  Gio.FileCreateFlags.REPLACE_DESTINATION, null);
 
     if (success) {
-        imWheelCommand = value != '0' ? imWheelProgramWheel : imWheelQuit;
+        const imWheelCommand = value != '0' ? imWheelProgramWheel : imWheelQuit;
         GLib.spawn_command_line_async(imWheelCommand);
     }
 
