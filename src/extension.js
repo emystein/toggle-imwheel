@@ -34,12 +34,90 @@ const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const utils = Me.imports.utils;
 
+
+class ShellCommand {
+    constructor(command) {
+        this.command = command;
+    }
+
+    execute() {
+        GLib.spawn_command_line_async(this.command);
+    }
+}
+
+
+class RebindButtonsCommand {
+    constructor(value) {
+        const confFile = Gio.File.parse_name('~/.imwheelrc');
+        const text = `".*"\nNone,      Up,   Button4, ${value}\nNone,      Down, Button5, ${value}\nControl_L, Up,   Control_L|Button4\nControl_L, Down, Control_L|Button5\nShift_L,   Up,   Shift_L|Button4\nShift_L,   Down, Shift_L|Button5`;
+        const [success, tag] = confFile.replace_contents(text, null, false,  Gio.FileCreateFlags.REPLACE_DESTINATION, null);
+    }
+
+    execute() {
+        new ShellCommand('imwheel -kill -b "45"').execute();
+    }
+}
+
+
+class QuitCommand {
+    execute() {
+        new ShellCommand('imwheel -kill -quit').execute();
+    }
+}
+
+
+class IMWheel {
+    constructor() {
+
+    }
+
+    rebindButtons(buttonValue) {
+        new RebindButtonsCommand(buttonValue).execute();
+    }
+
+    quit() {
+        new QuitCommand().execute();
+    }
+}
+
+
+/**
+ * 
+ * @param {string} value
+ * @returns {boolean}
+ */
+function setServiceMode(value) {
+    const imWheel = new IMWheel();
+    if (value !== 0) {
+        imWheel.rebindButtons(value);
+    } else {
+        imWheel.quit();
+    }
+    return true;
+}
+
+
+function exec(command) {
+    const output = GLib.spawn_command_line_sync(command);
+    return {
+        ok: output[0],
+        standard_output: ByteArray.toString(output[1]),
+        standard_error: ByteArray.toString(output[2]),
+        exit_status: output[3]
+    }
+}
+
+function checkInstalled() {
+    const checkExists = exec('which imwheel');
+    return checkExists.standard_output.length > 0;
+}
+
 const Indicator = GObject.registerClass(
     class Indicator extends PanelMenu.Button {
         _init(settings) {
             super._init(0.0, _('Toggle imwheel settings'));
 
-            this.imwInstalled = utils.checkInstalled();
+            this.imwInstalled = checkInstalled();
 
             this.currentMode = () => {
                 return settings.get_string('current-mode');
@@ -61,7 +139,7 @@ const Indicator = GObject.registerClass(
             this.add_child(this.icon);
 
             this.applyCurrentMode = () => {
-                const modeSuccess = utils.setServiceMode(settings.get_int(`${this.currentMode()}-value`));
+                const modeSuccess = setServiceMode(settings.get_int(`${this.currentMode()}-value`));
                 const iconName = modeSuccess ? this.getIconName() : 'dialog-warning-symbolic';
                 this.icon.set_icon_name(iconName);
             }
@@ -86,7 +164,7 @@ class Extension {
     }
 
     enable() {
-        this.imwInstalled = utils.checkInstalled();
+        this.imwInstalled = checkInstalled();
 
         const confFile = Gio.File.parse_name('~/.imwheelrc');
         this.confExists = confFile.query_exists(null);
