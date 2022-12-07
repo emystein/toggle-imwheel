@@ -40,12 +40,17 @@ const Indicator = GObject.registerClass(
             super._init(0.0, _('Toggle imwheel settings'));
 
             this.imwInstalled = utils.checkInstalled();
+
+            this.currentMode = () => {
+                return settings.get_string('current-mode');
+            };
+
             this.getIconName = () => {
                 if (!this.imwInstalled) {
                     return 'dialog-error-symbolic';
                 }
 
-                return settings.get_string('current-mode') === 'touchpad' ? 'input-touchpad-symbolic' : 'input-mouse-symbolic'
+                return this.currentMode() === 'touchpad' ? 'input-touchpad-symbolic' : 'input-mouse-symbolic'
             };
 
             this.icon = new St.Icon({
@@ -55,16 +60,16 @@ const Indicator = GObject.registerClass(
 
             this.add_child(this.icon);
 
-            this.toggleModes = () => {
-                settings.set_string('current-mode', (settings.get_string('current-mode') === 'touchpad' ? 'mouse' : 'touchpad'));
-                const success = utils.setServiceMode(settings.get_int(`${settings.get_string('current-mode')}-value`));
-
-                if (success) {
-                    this.icon.set_icon_name(this.getIconName());
-                } else {
-                    this.icon.set_icon_name('dialog-warning-symbolic');
-                }
+            this.applyCurrentMode = () => {
+                const modeSuccess = utils.setServiceMode(settings.get_int(`${this.currentMode()}-value`));
+                const iconName = modeSuccess ? this.getIconName() : 'dialog-warning-symbolic';
+                this.icon.set_icon_name(iconName);
             }
+
+            this.toggleModes = () => {
+                settings.set_string('current-mode', (this.currentMode() === 'touchpad' ? 'mouse' : 'touchpad'));
+                this.applyCurrentMode();
+            };
 
             if (this.imwInstalled) {
                 this.connect('button-press-event', this.toggleModes);
@@ -90,6 +95,7 @@ class Extension {
 
         this._indicator = new Indicator(this.settings);
         Main.panel.addToStatusArea(this._uuid, this._indicator);
+        this._indicator.applyCurrentMode();
     }
 
     disable() {
