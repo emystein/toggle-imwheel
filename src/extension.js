@@ -46,13 +46,19 @@ class ShellCommand {
 }
 
 
-class RebindButtonsCommand {
-    constructor(value) {
-        const confFile = Gio.File.parse_name('~/.imwheelrc');
-        const text = `".*"\nNone,      Up,   Button4, ${value}\nNone,      Down, Button5, ${value}\nControl_L, Up,   Control_L|Button4\nControl_L, Down, Control_L|Button5\nShift_L,   Up,   Shift_L|Button4\nShift_L,   Down, Shift_L|Button5`;
-        const [success, tag] = confFile.replace_contents(text, null, false,  Gio.FileCreateFlags.REPLACE_DESTINATION, null);
+class IMWheelConfiguration {
+    constructor() {
+        this.file = Gio.File.parse_name('~/.imwheelrc');
     }
+    
+    update(buttonValue) {
+        const text = `".*"\nNone,      Up,   Button4, ${buttonValue}\nNone,      Down, Button5, ${buttonValue}\nControl_L, Up,   Control_L|Button4\nControl_L, Down, Control_L|Button5\nShift_L,   Up,   Shift_L|Button4\nShift_L,   Down, Shift_L|Button5`;
+        const [success, tag] = this.file.replace_contents(text, null, false,  Gio.FileCreateFlags.REPLACE_DESTINATION, null);
+    }
+}
 
+
+class RebindButtonsCommand {
     execute() {
         new ShellCommand('imwheel -kill -b "45"').execute();
     }
@@ -68,11 +74,12 @@ class QuitCommand {
 
 class IMWheel {
     constructor() {
-
+        this.configuration = new IMWheelConfiguration();
     }
 
-    rebindButtons(buttonValue) {
-        new RebindButtonsCommand(buttonValue).execute();
+    rebind(buttonValue) {
+        this.configuration.update(buttonValue);
+        new RebindButtonsCommand().execute();
     }
 
     quit() {
@@ -83,13 +90,13 @@ class IMWheel {
 
 /**
  * 
- * @param {string} value
+ * @param {string} buttonValue
  * @returns {boolean}
  */
-function setServiceMode(value) {
+function setServiceMode(buttonValue) {
     const imWheel = new IMWheel();
-    if (value !== 0) {
-        imWheel.rebindButtons(value);
+    if (buttonValue !== 0) {
+        imWheel.rebind(buttonValue);
     } else {
         imWheel.quit();
     }
