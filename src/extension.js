@@ -130,16 +130,14 @@ const Indicator = GObject.registerClass(
         _init(settings) {
             super._init(0.0, _('Toggle imwheel settings'));
 
-            const imWheel = new IMWheel();
-
-            this.imwInstalled = imWheel.isInstalled();
+            this.imWheel = new IMWheel();
 
             this.currentMode = () => {
                 return settings.get_string('current-mode');
             };
 
             this.getIconName = () => {
-                if (!this.imwInstalled) {
+                if (!this.imWheel.isInstalled()) {
                     return 'dialog-error-symbolic';
                 }
 
@@ -164,7 +162,7 @@ const Indicator = GObject.registerClass(
                 this.applyCurrentMode();
             };
 
-            if (this.imwInstalled) {
+            if (this.imWheel.isInstalled()) {
                 this.connect('button-press-event', this.toggleModes);
             }
         }
@@ -180,7 +178,6 @@ class Extension {
 
     enable() {
         this.settings = ExtensionUtils.getSettings('org.gnome.shell.toggleimwheel_mijorus');
-
         this._indicator = new Indicator(this.settings);
         Main.panel.addToStatusArea(this._uuid, this._indicator);
         this._indicator.applyCurrentMode();
