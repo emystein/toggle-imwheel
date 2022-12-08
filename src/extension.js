@@ -35,7 +35,23 @@ const PopupMenu = imports.ui.popupMenu;
 const utils = Me.imports.utils;
 
 
-class ShellCommand {
+class SyncShellCommand {
+    constructor(command) {
+        this.command = command;
+    }
+
+    execute() {
+        const output = GLib.spawn_command_line_sync(this.command);
+        return {
+            ok: output[0],
+            standard_output: ByteArray.toString(output[1]),
+            standard_error: ByteArray.toString(output[2]),
+            exit_status: output[3]
+        }
+    }
+}
+
+class AsyncShellCommand {
     constructor(command) {
         this.command = command;
     }
@@ -60,14 +76,14 @@ class IMWheelConfiguration {
 
 class RebindButtonsCommand {
     execute() {
-        new ShellCommand('imwheel -kill -b "45"').execute();
+        new AsyncShellCommand('imwheel -kill -b "45"').execute();
     }
 }
 
 
 class QuitCommand {
     execute() {
-        new ShellCommand('imwheel -kill -quit').execute();
+        new AsyncShellCommand('imwheel -kill -quit').execute();
     }
 }
 
@@ -75,6 +91,11 @@ class QuitCommand {
 class IMWheel {
     constructor() {
         this.configuration = new IMWheelConfiguration();
+    }
+
+    isInstalled() {
+        const checkExists = new SyncShellCommand('which imwheel').execute();
+        return checkExists.standard_output.length > 0;
     }
 
     rebind(buttonValue) {
@@ -104,27 +125,14 @@ function setServiceMode(buttonValue) {
 }
 
 
-function exec(command) {
-    const output = GLib.spawn_command_line_sync(command);
-    return {
-        ok: output[0],
-        standard_output: ByteArray.toString(output[1]),
-        standard_error: ByteArray.toString(output[2]),
-        exit_status: output[3]
-    }
-}
-
-function checkInstalled() {
-    const checkExists = exec('which imwheel');
-    return checkExists.standard_output.length > 0;
-}
-
 const Indicator = GObject.registerClass(
     class Indicator extends PanelMenu.Button {
         _init(settings) {
             super._init(0.0, _('Toggle imwheel settings'));
 
-            this.imwInstalled = checkInstalled();
+            const imWheel = new IMWheel();
+
+            this.imwInstalled = imWheel.isInstalled();
 
             this.currentMode = () => {
                 return settings.get_string('current-mode');
@@ -171,11 +179,6 @@ class Extension {
     }
 
     enable() {
-        this.imwInstalled = checkInstalled();
-
-        const confFile = Gio.File.parse_name('~/.imwheelrc');
-        this.confExists = confFile.query_exists(null);
-
         this.settings = ExtensionUtils.getSettings('org.gnome.shell.toggleimwheel_mijorus');
 
         this._indicator = new Indicator(this.settings);

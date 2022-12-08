@@ -6,13 +6,14 @@ const ByteArray = imports.byteArray;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const utils = Me.imports.utils;
+const extension = Me.imports.extension;
 
 
 function init() {
 }
 
 function buildPrefsWidget() {
-    this.imwInstalled = utils.checkInstalled();
+    this.imwInstalled = new extension.ImWheel().isInstalled();
     
     // Copy the same GSettings code from `extension.js`
     this.settings = ExtensionUtils.getSettings('org.gnome.shell.toggleimwheel_mijorus'); // Gio.Settings
