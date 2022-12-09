@@ -12,6 +12,15 @@ const extension = Me.imports.extension;
 function init() {
 }
 
+
+function setServiceModeValue(buttonValue) {
+    const imWheel = new extension.IMWheel();
+    if (buttonValue === 0) {
+        imWheel.quit();
+    }
+    imWheel.rebind(buttonValue);
+}
+
 function buildPrefsWidget() {
     this.imwInstalled = new extension.ImWheel().isInstalled();
     
@@ -60,7 +69,7 @@ function buildPrefsWidget() {
         const applySettingsButton = new Gtk.Button({ label: 'Apply', halign: Gtk.Align.START, 'margin-top': 10 });
         applySettingsButton.get_style_context().add_class('suggested-action');
         applySettingsButton.connect('clicked', function() {
-            extension.setServiceModeValue(this.settings.get_int(`${this.settings.get_string('current-mode')}-value`));
+            setServiceModeValue(this.settings.get_int(`${this.settings.get_string('current-mode')}-value`));
         });
 
         prefsWidget.append(applySettingsButton);

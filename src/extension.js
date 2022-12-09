@@ -144,6 +144,13 @@ class Mode {
     persist() {
         this.settings.set_string('current-mode', this.name());
     }
+
+    bind(imWheel) {
+        if (this.value() === 0) {
+            imWheel.quit();
+        }
+        imWheel.rebind(this.value());
+    }
 }
 
 class InputMode extends Mode {
@@ -194,19 +201,6 @@ class ErrorMode extends Mode {
 }
 
 
-function setServiceMode(mode) {
-    setServiceModeValue(mode.value());
-}
-
-function setServiceModeValue(buttonValue) {
-    const imWheel = new IMWheel();
-    if (buttonValue === 0) {
-        imWheel.quit();
-    }
-    imWheel.rebind(buttonValue);
-}
-
-
 const Indicator = GObject.registerClass(
     class Indicator extends PanelMenu.Button {
         _init(settings) {
@@ -229,7 +223,7 @@ const Indicator = GObject.registerClass(
             };
 
             this.applyCurrentMode = () => {
-                setServiceMode(this.currentMode);
+                this.currentMode.bind(this.imWheel);
                 this.currentMode.updateIcon(this.icon);
             }
 
