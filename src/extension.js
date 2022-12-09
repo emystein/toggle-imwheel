@@ -203,46 +203,31 @@ class ErrorMode extends Mode {
 
 const Indicator = GObject.registerClass(
     class Indicator extends PanelMenu.Button {
-        _init(settings) {
+        _init(imWheel, initialMode) {
             super._init(0.0, _('Toggle imwheel settings'));
-
-            this.imWheel = new IMWheel();
-
-            this.currentModeSetting = () => {
-                return settings.get_string('current-mode');
-            };
-
-            this.initialMode = () => {
-                if (!this.imWheel.isInstalled()) {
-                    return new ErrorMode(settings);
-                }
-                if (this.currentModeSetting() === 'touchpad') {
-                    return new TouchpadMode(settings);
-                }
-                return new MouseMode(settings);
-            };
 
             this.toggleModes = () => {
                 this.currentMode = this.currentMode.toggle();
                 this.currentMode.persist();
-                this.currentMode.bind(this.imWheel);
+                this.currentMode.bind(imWheel);
                 this.currentMode.updateIcon(this.icon);
             };
 
-            this.currentMode = this.initialMode();
+            this.currentMode = initialMode;
 
-            this.currentMode.bind(this.imWheel);
+            this.currentMode.bind(imWheel);
 
             this.icon = this.currentMode.icon();
 
             this.add_child(this.icon);
 
-            if (this.imWheel.isInstalled()) {
+            if (imWheel.isInstalled()) {
                 this.connect('button-press-event', this.toggleModes);
             }
         }
     }
 );
+
 
 class Extension {
     constructor(uuid) {
@@ -251,9 +236,23 @@ class Extension {
         ExtensionUtils.initTranslations(GETTEXT_DOMAIN);
     }
 
+    initialMode(imWheel, settings) {
+        const currentModeName = settings.get_string('current-mode');
+        let initialMode = new TouchpadMode(settings);
+        if (currentModeName === 'mouse') {
+            initialMode = new MouseMode(settings);
+        } 
+        if (!imWheel.isInstalled()) {
+            initialMode = new ErrorMode(settings);
+        }
+        return initialMode;
+    }
+
     enable() {
-        this.settings = ExtensionUtils.getSettings('org.gnome.shell.toggleimwheel_mijorus');
-        this._indicator = new Indicator(this.settings);
+        const imWheel = new IMWheel();
+        const settings = ExtensionUtils.getSettings('org.gnome.shell.toggleimwheel_mijorus');
+        const initialMode = this.initialMode(imWheel, settings);
+        this._indicator = new Indicator(imWheel, initialMode);
         Main.panel.addToStatusArea(this._uuid, this._indicator);
     }
 
