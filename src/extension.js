@@ -237,9 +237,8 @@ class Extension {
     }
 
     initialMode(imWheel, settings) {
-        const currentModeName = settings.get_string('current-mode');
         let initialMode = new TouchpadMode(settings);
-        if (currentModeName === 'mouse') {
+        if (settings.get_string('current-mode') === 'mouse') {
             initialMode = new MouseMode(settings);
         } 
         if (!imWheel.isInstalled()) {
