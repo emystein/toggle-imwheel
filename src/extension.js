@@ -109,6 +109,65 @@ class IMWheel {
 }
 
 
+class Mode {
+    name() {
+        return '';
+    }
+
+    iconName() {
+        return '';
+    }
+
+    toggle() {
+        return new Mode();
+    }
+}
+
+class InputMode extends Mode {
+    iconName() {
+        return `input-${this.name()}-symbolic`;
+    }
+}
+
+
+class MouseMode extends InputMode {
+    name() {
+        return 'mouse';
+    }
+
+    toggle() {
+        return new TouchpadMode();
+    }
+}
+
+
+class TouchpadMode extends InputMode {
+    name() {
+        return 'touchpad';
+    }
+
+    toggle() {
+        return new MouseMode();
+    }
+}
+
+
+class ErrorMode extends Mode {
+    name() {
+        return 'error';
+    }
+
+    iconName() {
+        return 'dialog-error-symbolic';
+    }
+
+    toggle() {
+        return new TouchpadMode();
+    }
+}
+
+
+
 /**
  * 
  * @param {string} buttonValue
@@ -116,12 +175,10 @@ class IMWheel {
  */
 function setServiceMode(buttonValue) {
     const imWheel = new IMWheel();
-    if (buttonValue !== 0) {
-        imWheel.rebind(buttonValue);
-    } else {
+    if (buttonValue === 0) {
         imWheel.quit();
     }
-    return true;
+    imWheel.rebind(buttonValue);
 }
 
 
@@ -133,34 +190,39 @@ const Indicator = GObject.registerClass(
             this.imWheel = new IMWheel();
 
             this.currentMode = () => {
-                return settings.get_string('current-mode');
-            };
-
-            this.getIconName = () => {
                 if (!this.imWheel.isInstalled()) {
-                    return 'dialog-error-symbolic';
+                    return new ErrorMode();
                 }
 
-                return this.currentMode() === 'touchpad' ? 'input-touchpad-symbolic' : 'input-mouse-symbolic'
+                const currentModeSetting = settings.get_string('current-mode');
+
+                if (currentModeSetting === 'touchpad') {
+                    return new TouchpadMode();
+                } else {
+                    return new MouseMode();
+                }
+            };
+
+            this.updateCurrentIcon = () => {
+                this.icon.set_icon_name(this.currentMode().iconName());
+            }
+
+            this.applyCurrentMode = () => {
+                setServiceMode(settings.get_int(`${this.currentMode().name()}-value`));
+                this.updateCurrentIcon();
+            }
+
+            this.toggleModes = () => {
+                settings.set_string('current-mode', this.currentMode().toggle().name());
+                this.applyCurrentMode();
             };
 
             this.icon = new St.Icon({
-                icon_name: this.getIconName(),
+                icon_name: this.currentMode().iconName(),
                 style_class: 'system-status-icon',
             });
 
             this.add_child(this.icon);
-
-            this.applyCurrentMode = () => {
-                const modeSuccess = setServiceMode(settings.get_int(`${this.currentMode()}-value`));
-                const iconName = modeSuccess ? this.getIconName() : 'dialog-warning-symbolic';
-                this.icon.set_icon_name(iconName);
-            }
-
-            this.toggleModes = () => {
-                settings.set_string('current-mode', (this.currentMode() === 'touchpad' ? 'mouse' : 'touchpad'));
-                this.applyCurrentMode();
-            };
 
             if (this.imWheel.isInstalled()) {
                 this.connect('button-press-event', this.toggleModes);
