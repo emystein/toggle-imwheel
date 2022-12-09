@@ -110,20 +110,47 @@ class IMWheel {
 
 
 class Mode {
+    constructor(settings) {
+        this.settings = settings;
+    }
+
     name() {
         return '';
+    }
+
+    value() {
+        return 0;
+    }
+
+    icon() {
+        return new St.Icon({
+            icon_name: this.iconName(),
+            style_class: 'system-status-icon',
+        });
     }
 
     iconName() {
         return '';
     }
 
+    updateIcon(iconToUpdate) {
+        iconToUpdate.set_icon_name(this.icon().icon_name);
+    }
+
     toggle() {
         return new Mode();
+    }
+
+    persist() {
+        this.settings.set_string('current-mode', this.name());
     }
 }
 
 class InputMode extends Mode {
+    value() {
+        return this.settings.get_int(`${this.name()}-value`);
+    }
+
     iconName() {
         return `input-${this.name()}-symbolic`;
     }
@@ -136,7 +163,7 @@ class MouseMode extends InputMode {
     }
 
     toggle() {
-        return new TouchpadMode();
+        return new TouchpadMode(this.settings);
     }
 }
 
@@ -147,7 +174,7 @@ class TouchpadMode extends InputMode {
     }
 
     toggle() {
-        return new MouseMode();
+        return new MouseMode(this.settings);
     }
 }
 
@@ -162,18 +189,16 @@ class ErrorMode extends Mode {
     }
 
     toggle() {
-        return new TouchpadMode();
+        return new TouchpadMode(this.settings);
     }
 }
 
 
+function setServiceMode(mode) {
+    setServiceModeValue(mode.value());
+}
 
-/**
- * 
- * @param {string} buttonValue
- * @returns {boolean}
- */
-function setServiceMode(buttonValue) {
+function setServiceModeValue(buttonValue) {
     const imWheel = new IMWheel();
     if (buttonValue === 0) {
         imWheel.quit();
@@ -189,38 +214,34 @@ const Indicator = GObject.registerClass(
 
             this.imWheel = new IMWheel();
 
-            this.currentMode = () => {
-                if (!this.imWheel.isInstalled()) {
-                    return new ErrorMode();
-                }
-
-                const currentModeSetting = settings.get_string('current-mode');
-
-                if (currentModeSetting === 'touchpad') {
-                    return new TouchpadMode();
-                } else {
-                    return new MouseMode();
-                }
+            this.currentModeSetting = () => {
+                return settings.get_string('current-mode');
             };
 
-            this.updateCurrentIcon = () => {
-                this.icon.set_icon_name(this.currentMode().iconName());
-            }
+            this.initialMode = () => {
+                if (!this.imWheel.isInstalled()) {
+                    return new ErrorMode(settings);
+                }
+                if (this.currentModeSetting() === 'touchpad') {
+                    return new TouchpadMode(settings);
+                }
+                return new MouseMode(settings);
+            };
 
             this.applyCurrentMode = () => {
-                setServiceMode(settings.get_int(`${this.currentMode().name()}-value`));
-                this.updateCurrentIcon();
+                setServiceMode(this.currentMode);
+                this.currentMode.updateIcon(this.icon);
             }
 
             this.toggleModes = () => {
-                settings.set_string('current-mode', this.currentMode().toggle().name());
+                this.currentMode = this.currentMode.toggle();
+                this.currentMode.persist();
                 this.applyCurrentMode();
             };
 
-            this.icon = new St.Icon({
-                icon_name: this.currentMode().iconName(),
-                style_class: 'system-status-icon',
-            });
+            this.currentMode = this.initialMode();
+
+            this.icon = this.currentMode.icon();
 
             this.add_child(this.icon);
 

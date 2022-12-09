@@ -60,7 +60,7 @@ function buildPrefsWidget() {
         const applySettingsButton = new Gtk.Button({ label: 'Apply', halign: Gtk.Align.START, 'margin-top': 10 });
         applySettingsButton.get_style_context().add_class('suggested-action');
         applySettingsButton.connect('clicked', function() {
-            extension.setServiceMode(this.settings.get_int(`${this.settings.get_string('current-mode')}-value`));
+            extension.setServiceModeValue(this.settings.get_int(`${this.settings.get_string('current-mode')}-value`));
         });
 
         prefsWidget.append(applySettingsButton);
