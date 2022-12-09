@@ -222,18 +222,16 @@ const Indicator = GObject.registerClass(
                 return new MouseMode(settings);
             };
 
-            this.applyCurrentMode = () => {
-                this.currentMode.bind(this.imWheel);
-                this.currentMode.updateIcon(this.icon);
-            }
-
             this.toggleModes = () => {
                 this.currentMode = this.currentMode.toggle();
                 this.currentMode.persist();
-                this.applyCurrentMode();
+                this.currentMode.bind(this.imWheel);
+                this.currentMode.updateIcon(this.icon);
             };
 
             this.currentMode = this.initialMode();
+
+            this.currentMode.bind(this.imWheel);
 
             this.icon = this.currentMode.icon();
 
@@ -257,7 +255,6 @@ class Extension {
         this.settings = ExtensionUtils.getSettings('org.gnome.shell.toggleimwheel_mijorus');
         this._indicator = new Indicator(this.settings);
         Main.panel.addToStatusArea(this._uuid, this._indicator);
-        this._indicator.applyCurrentMode();
     }
 
     disable() {
